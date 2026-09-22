@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.wearabs.WearAbsApp
 import org.wearabs.data.BookEntity
+import org.wearabs.data.ProgressEntity
 import org.wearabs.data.TrackEntity
 import org.wearabs.net.Covers
 import org.wearabs.work.DownloadState
@@ -24,6 +25,8 @@ data class BookUiState(
     val cover: Any? = null,
     val tracks: List<TrackEntity> = emptyList(),
     val download: DownloadState? = null,
+    /** Listening position, for the progress bar. */
+    val progress: ProgressEntity? = null,
     val refreshing: Boolean = false,
     val error: String? = null
 )
@@ -38,9 +41,10 @@ class BookViewModel(application: Application, private val itemId: String) :
         repository.observeBook(itemId),
         repository.observeTracks(itemId),
         DownloadWorker.observe(application, itemId),
+        repository.observeProgress(itemId),
         transient
-    ) { book, tracks, download, extra ->
-        extra.copy(book = book, tracks = tracks, download = download, cover = extra.cover)
+    ) { book, tracks, download, progress, extra ->
+        extra.copy(book = book, tracks = tracks, download = download, progress = progress)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BookUiState())
 
     init {

@@ -1,12 +1,9 @@
 package org.wearabs.ui
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -17,7 +14,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -25,6 +21,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
 import androidx.wear.compose.material3.Button
+import org.wearabs.data.BookEntity
 import androidx.wear.compose.material3.CircularProgressIndicator
 import androidx.wear.compose.material3.EdgeButton
 import androidx.wear.compose.material3.EdgeButtonSize
@@ -40,13 +37,13 @@ import androidx.wear.compose.material3.lazy.transformedHeight
 // ---- Home ------------------------------------------------------------------
 
 /**
- * The library as a grid of cover art. Two tiles per row is what fits on a round
- * watch without the artwork becoming unreadable, and Search sits in an
- * EdgeButton hugging the bottom rim.
+ * The library as a plain vertical text list — faster to scan on a watch than a
+ * wall of thumbnails, where the artwork is too small to tell books apart.
+ * Search sits in an EdgeButton hugging the bottom rim.
  */
 @Composable
 fun HomeScreen(
-    tiles: List<LibraryTile>,
+    books: List<BookEntity>,
     onSearch: () -> Unit,
     onBook: (String) -> Unit,
     onSignOut: () -> Unit
@@ -62,8 +59,6 @@ fun HomeScreen(
             }
         }
     ) { contentPadding ->
-        val rows = tiles.chunked(2)
-
         TransformingLazyColumn(
             state = listState,
             contentPadding = contentPadding,
@@ -76,36 +71,23 @@ fun HomeScreen(
                 ) { Text("Library") }
             }
 
-            if (tiles.isEmpty()) {
-                item {
-                    CenteredMessage("Nothing downloaded yet")
-                }
+            if (books.isEmpty()) {
+                item { CenteredMessage("Nothing downloaded yet") }
             }
 
-            // Two per row; a trailing odd tile keeps its size rather than stretching.
-            items(rows.size, key = { rows[it].first().itemId }) { rowIndex ->
-                val row = rows[rowIndex]
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 3.dp)
-                        .transformedHeight(this, spec)
-                ) {
-                    row.forEach { tile ->
-                        BookCover(
-                            model = tile.cover,
-                            title = tile.title,
-                            modifier = Modifier
-                                .weight(1f)
-                                .aspectRatio(1f)
-                                .clip(RoundedCornerShape(18.dp))
-                                // The cover is the tap target itself.
-                                .clickable { onBook(tile.itemId) }
-                        )
-                    }
-                    if (row.size == 1) Spacer(Modifier.weight(1f))
-                }
+            items(books.size, key = { books[it].itemId }) { index ->
+                val book = books[index]
+                FilledTonalButton(
+                    onClick = { onBook(book.itemId) },
+                    label = { Text(book.title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+                    secondaryLabel = if (book.author.isNotBlank()) {
+                        { Text(book.author, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    } else {
+                        null
+                    },
+                    transformation = SurfaceTransformation(spec),
+                    modifier = Modifier.fillMaxWidth().transformedHeight(this, spec)
+                )
             }
 
             item {

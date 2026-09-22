@@ -58,6 +58,24 @@ interface TrackDao {
 }
 
 @Dao
+interface ChapterDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(chapters: List<ChapterEntity>)
+
+    @Query("SELECT * FROM chapters WHERE itemId = :itemId ORDER BY chapterIndex ASC")
+    suspend fun forBook(itemId: String): List<ChapterEntity>
+
+    @Query("DELETE FROM chapters WHERE itemId = :itemId")
+    suspend fun deleteForBook(itemId: String)
+
+    @Transaction
+    suspend fun replace(itemId: String, chapters: List<ChapterEntity>) {
+        deleteForBook(itemId)
+        upsertAll(chapters)
+    }
+}
+
+@Dao
 interface ProgressDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(progress: ProgressEntity)

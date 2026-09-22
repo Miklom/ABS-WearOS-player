@@ -4,9 +4,9 @@ A deliberately minimal Audiobookshelf client for Wear OS, built for a Pixel Watc
 (Wear OS 6-7, API 36). It searches one Audiobookshelf library, downloads books to the
 watch, plays them back offline, and syncs the listening position with the server.
 
-It does three things and nothing else: **search**, **download**, **play/pause**.
-There is no skip, no speed control, no chapter list and no sleep timer, and there
-is no companion phone app — the watch talks to Audiobookshelf directly.
+It does three things: **search**, **download**, and **play**. There is no speed
+control and no sleep timer, and there is no companion phone app — the watch talks
+to Audiobookshelf directly.
 
 
 ---
@@ -177,9 +177,17 @@ become an ExoPlayer playlist; each `MediaItem` carries the track's `startOffset`
 its metadata extras, which is how the player converts between the global book
 position and a (track index, offset) pair in both directions.
 
-The Player screen shows the title, `position / total`, and one large play/pause
-button, over the cover art, with the listening position as an arc around the
-rim. That is all of it.
+The Player screen shows the current chapter, position inside that chapter and
+inside the whole book, a play/pause button flanked by 10-second skips, and
+chapter previous/next below — all over the cover art, with progress through the
+book as an arc around the rim. The chapter row only appears for books that
+actually carry chapter marks.
+
+Chapter marks come from `media.chapters` on the expanded item (`{ id, start,
+end, title }`, seconds from the start of the book) and are stored alongside the
+tracks, so chapter navigation works offline. "Previous" restarts the current
+chapter when already more than three seconds into it and steps back otherwise,
+which is the convention every audio player uses.
 
 ### Offline progress and sync
 
@@ -310,9 +318,11 @@ Built with Wear Compose Material 3 in the current expressive style:
 edges of the round display, and `EdgeButton` for each screen's primary action,
 hugging the bottom rim.
 
-- **Library** is a grid of cover art, two tiles per row — what fits on a round
-  watch without the artwork becoming unreadable. Covers are the tap target
-  themselves, with the title only as the accessibility label.
+- **Library** is a plain vertical text list of title and author. Cover
+  thumbnails were tried and dropped: at watch size the artwork is too small to
+  tell books apart, and scanning text is faster.
+- **Book** shows the cover, the metadata, a progress bar once the book has been
+  started, then Play and — below it, behind a confirmation dialog — Delete.
 - **Book** and **Player** put the cover behind the content. The backdrop is
   deliberately decoded at ~96px and scaled up: bilinear filtering turns that into
   a soft wash for free, which is far kinder to a watch GPU than a real blur pass

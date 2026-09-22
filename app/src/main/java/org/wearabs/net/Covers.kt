@@ -22,9 +22,6 @@ object Covers {
     /** Wide enough for a full-screen background on a 1.4" watch. */
     const val LARGE = 384
 
-    /** Grid tile on the library screen. */
-    const val TILE = 192
-
     /** Row icon in search results. */
     const val THUMB = 96
 

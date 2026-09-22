@@ -17,10 +17,14 @@ import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.wearabs.WearAbsApp
+import org.wearabs.data.ChapterEntity
 import org.wearabs.data.TrackEntity
 import org.wearabs.net.Covers
 import org.wearabs.player.PlayerService
 import org.wearabs.player.bookDuration
+import org.wearabs.player.chapterIndexAt
+import org.wearabs.player.nextChapterTarget
+import org.wearabs.player.previousChapterTarget
 import org.wearabs.player.buildPlaylist
 import org.wearabs.player.globalPosition
 import org.wearabs.player.seekTargetFor
@@ -35,8 +39,17 @@ data class PlayerUiState(
     /** File or URL for Coil; null when the book has no cover. */
     val cover: Any? = null,
     val ready: Boolean = false,
-    val error: String? = null
-)
+    val error: String? = null,
+    // ---- Chapters, absent for books that have none ----
+    val chapterTitle: String? = null,
+    /** Seconds into the current chapter. */
+    val chapterPosition: Double = 0.0,
+    val chapterDuration: Double = 0.0,
+    val canPreviousChapter: Boolean = false,
+    val canNextChapter: Boolean = false
+) {
+    val hasChapters: Boolean get() = chapterTitle != null
+}
 
 class PlayerViewModel(application: Application, private val itemId: String) :
     AndroidViewModel(application) {
@@ -45,6 +58,7 @@ class PlayerViewModel(application: Application, private val itemId: String) :
 
     private var controller: MediaController? = null
     private var tracks: List<TrackEntity> = emptyList()
+    private var chapters: List<ChapterEntity> = emptyList()
     private var ticker: Job? = null
 
     private val _state = MutableStateFlow(PlayerUiState())
@@ -77,6 +91,7 @@ class PlayerViewModel(application: Application, private val itemId: String) :
         val application = getApplication<Application>()
         val book = repository.book(itemId)
         tracks = repository.tracks(itemId).filter { it.localPath != null }
+        chapters = repository.chapters(itemId)
 
         if (book == null || tracks.isEmpty()) {
             _state.value = _state.value.copy(error = "Book is not downloaded")
@@ -113,18 +128,45 @@ class PlayerViewModel(application: Application, private val itemId: String) :
             mediaController.prepare()
         }
 
-        _state.value = _state.value.copy(
-            ready = true,
-            playing = mediaController.isPlaying
-        )
+        _state.value = _state.value.copy(ready = true, playing = mediaController.isPlaying)
         refreshPosition()
         if (mediaController.isPlaying) startTicker()
     }
+
+    // ---- Controls ----------------------------------------------------------
 
     fun togglePlayPause() {
         val controller = controller ?: return
         if (controller.isPlaying) controller.pause() else controller.play()
     }
+
+    /** Jump by a fixed number of seconds, clamped to the book. */
+    fun seekBy(deltaSeconds: Double) {
+        seekToGlobal(_state.value.position + deltaSeconds)
+    }
+
+    /**
+     * Back to the start of the current chapter, or to the previous one when
+     * already near the start — the convention every audio player uses.
+     */
+    fun previousChapter() {
+        seekToGlobal(previousChapterTarget(chapters, _state.value.position) ?: return)
+    }
+
+    fun nextChapter() {
+        seekToGlobal(nextChapterTarget(chapters, _state.value.position) ?: return)
+    }
+
+    private fun seekToGlobal(seconds: Double) {
+        val controller = controller ?: return
+        if (tracks.isEmpty()) return
+        val clamped = seconds.coerceIn(0.0, _state.value.duration.coerceAtLeast(0.0))
+        val target = seekTargetFor(tracks, clamped)
+        controller.seekTo(target.trackIndex, target.positionMs)
+        refreshPosition()
+    }
+
+    // ---- Position ----------------------------------------------------------
 
     private fun startTicker() {
         if (ticker?.isActive == true) return
@@ -148,7 +190,18 @@ class PlayerViewModel(application: Application, private val itemId: String) :
             controller.currentMediaItemIndex,
             controller.currentPosition
         )
-        _state.value = _state.value.copy(position = position)
+
+        val index = chapterIndexAt(chapters, position)
+        val chapter = index?.let { chapters[it] }
+
+        _state.value = _state.value.copy(
+            position = position,
+            chapterTitle = chapter?.title,
+            chapterPosition = chapter?.let { (position - it.start).coerceAtLeast(0.0) } ?: 0.0,
+            chapterDuration = chapter?.let { (it.end - it.start).coerceAtLeast(0.0) } ?: 0.0,
+            canPreviousChapter = chapter != null,
+            canNextChapter = index != null && index < chapters.lastIndex
+        )
     }
 
     override fun onCleared() {

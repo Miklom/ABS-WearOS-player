@@ -54,6 +54,8 @@ class Repository(
 
     suspend fun tracks(itemId: String): List<TrackEntity> = db.tracks().forBook(itemId)
 
+    suspend fun chapters(itemId: String): List<ChapterEntity> = db.chapters().forBook(itemId)
+
     /**
      * Fetches the item from the server and stores the book plus its track list.
      * Already-downloaded files are kept when the track list is unchanged.
@@ -64,6 +66,7 @@ class Repository(
         val existing = db.books().find(itemId)
         db.books().upsert(book.copy(downloaded = existing?.downloaded ?: false))
         db.tracks().replaceKeepingLocalFiles(itemId, item.toTrackEntities())
+        db.chapters().replace(itemId, item.toChapterEntities())
         reconcileDownloadState(itemId)
         return db.books().find(itemId) ?: book
     }
@@ -237,6 +240,30 @@ fun LibraryItemDto.toBookEntity(): BookEntity = BookEntity(
  * `audioFiles` is a fallback for older payloads, matching how the official
  * Android app resolves the inode.
  */
+/**
+ * Maps `media.chapters`. Chapters are optional — many books have none — and the
+ * server already stores start/end in seconds from the start of the whole book.
+ */
+fun LibraryItemDto.toChapterEntities(): List<ChapterEntity> {
+    // Sort first and map over the sorted list: the end-fallback below looks at
+    // the *next* chapter, which is only meaningful in playback order.
+    val sorted = media?.chapters.orEmpty().sortedBy { it.start }
+    return sorted.mapIndexed { index, chapter ->
+        ChapterEntity(
+            itemId = id,
+            chapterIndex = index,
+            start = chapter.start,
+            // Some books carry a zero end on the last chapter; fall back to the
+            // next chapter's start, or the book duration.
+            end = chapter.end.takeIf { it > chapter.start }
+                ?: sorted.getOrNull(index + 1)?.start
+                ?: media?.duration
+                ?: chapter.start,
+            title = chapter.title?.takeIf { it.isNotBlank() } ?: "Chapter ${index + 1}"
+        )
+    }
+}
+
 fun LibraryItemDto.toTrackEntities(): List<TrackEntity> {
     val media = media ?: return emptyList()
     val byPath = media.audioFiles.associateBy { it.metadata?.path }

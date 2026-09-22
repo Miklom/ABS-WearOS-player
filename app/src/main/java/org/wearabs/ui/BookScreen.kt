@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -18,20 +21,23 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
+import androidx.wear.compose.material3.AlertDialog
+import androidx.wear.compose.material3.AlertDialogDefaults
+import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.CircularProgressIndicator
-import androidx.wear.compose.material3.EdgeButton
-import androidx.wear.compose.material3.EdgeButtonSize
 import androidx.wear.compose.material3.FilledTonalButton
+import androidx.wear.compose.material3.LinearProgressIndicator
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.SurfaceTransformation
 import androidx.wear.compose.material3.Text
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
+import org.wearabs.data.fraction
 
 /**
- * Book detail over its own cover art. The primary action — download, or play
- * once downloaded — lives in the EdgeButton at the bottom rim.
+ * Book detail over its own cover art: Play first, Delete below it behind a
+ * confirmation, and the listening position as a bar under the metadata.
  */
 @Composable
 fun BookScreen(
@@ -44,24 +50,10 @@ fun BookScreen(
     val book = state.book
     val download = state.download
     val downloaded = book?.downloaded == true
+    var confirmDelete by remember { mutableStateOf(false) }
 
     CoverBackdrop(model = state.cover) {
-        ScreenScaffold(
-            scrollState = listState,
-            edgeButton = {
-                when {
-                    download != null -> Unit
-                    downloaded -> EdgeButton(onClick = onPlay, buttonSize = EdgeButtonSize.Large) {
-                        Text("Play")
-                    }
-                    state.tracks.isNotEmpty() -> EdgeButton(
-                        onClick = viewModel::download,
-                        buttonSize = EdgeButtonSize.Medium
-                    ) { Text("Download") }
-                    else -> Unit
-                }
-            }
-        ) { contentPadding ->
+        ScreenScaffold(scrollState = listState) { contentPadding ->
             TransformingLazyColumn(
                 state = listState,
                 contentPadding = contentPadding,
@@ -71,9 +63,7 @@ fun BookScreen(
                     BookCover(
                         model = state.cover,
                         title = book?.title.orEmpty(),
-                        modifier = Modifier
-                            .size(76.dp)
-                            .transformedHeight(this, spec)
+                        modifier = Modifier.size(76.dp).transformedHeight(this, spec)
                     )
                 }
                 item {
@@ -106,11 +96,20 @@ fun BookScreen(
                         text = formatDuration(book?.duration ?: 0.0),
                         style = MaterialTheme.typography.bodySmall,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 4.dp)
-                            .transformedHeight(this, spec)
+                        modifier = Modifier.fillMaxWidth().transformedHeight(this, spec)
                     )
+                }
+
+                // Only once there is something to show: an empty bar on an
+                // unstarted book is just noise.
+                state.progress?.takeIf { it.currentTime > 0 }?.let { progress ->
+                    item {
+                        ListeningProgress(
+                            fraction = progress.fraction.toFloat(),
+                            remaining = (progress.duration - progress.currentTime).coerceAtLeast(0.0),
+                            modifier = Modifier.transformedHeight(this, spec)
+                        )
+                    }
                 }
 
                 when {
@@ -118,23 +117,83 @@ fun BookScreen(
                         DownloadProgress(download.percent, download.slow)
                     }
 
-                    downloaded -> item {
-                        FilledTonalButton(
-                            onClick = viewModel::delete,
-                            label = { Text("Delete") },
+                    downloaded -> {
+                        item {
+                            Button(
+                                onClick = onPlay,
+                                label = { Text("Play") },
+                                transformation = SurfaceTransformation(spec),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 6.dp)
+                                    .transformedHeight(this, spec)
+                            )
+                        }
+                        item {
+                            FilledTonalButton(
+                                onClick = { confirmDelete = true },
+                                label = { Text("Delete") },
+                                transformation = SurfaceTransformation(spec),
+                                modifier = Modifier.fillMaxWidth().transformedHeight(this, spec)
+                            )
+                        }
+                    }
+
+                    state.tracks.isNotEmpty() -> item {
+                        Button(
+                            onClick = viewModel::download,
+                            label = { Text("Download") },
                             transformation = SurfaceTransformation(spec),
-                            modifier = Modifier.fillMaxWidth().transformedHeight(this, spec)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 6.dp)
+                                .transformedHeight(this, spec)
                         )
                     }
 
-                    state.tracks.isEmpty() && state.refreshing -> item { CenteredSpinner() }
+                    state.refreshing -> item { CenteredSpinner() }
 
-                    state.tracks.isEmpty() -> item {
-                        CenteredMessage(state.error ?: "No audio files")
-                    }
+                    else -> item { CenteredMessage(state.error ?: "No audio files") }
                 }
             }
         }
+    }
+
+    AlertDialog(
+        visible = confirmDelete,
+        onDismissRequest = { confirmDelete = false },
+        title = { Text("Delete download?") },
+        text = { Text("The book stays on the server.") },
+        confirmButton = {
+            AlertDialogDefaults.ConfirmButton(
+                onClick = {
+                    confirmDelete = false
+                    viewModel.delete()
+                }
+            )
+        },
+        dismissButton = {
+            AlertDialogDefaults.DismissButton(onClick = { confirmDelete = false })
+        }
+    )
+}
+
+@Composable
+private fun ListeningProgress(fraction: Float, remaining: Double, modifier: Modifier = Modifier) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier.fillMaxWidth().padding(vertical = 6.dp)
+    ) {
+        LinearProgressIndicator(
+            progress = { fraction },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = "${(fraction * 100).toInt()}% · ${formatDuration(remaining)} left",
+            style = MaterialTheme.typography.bodySmall,
+            textAlign = TextAlign.Center
+        )
     }
 }
 

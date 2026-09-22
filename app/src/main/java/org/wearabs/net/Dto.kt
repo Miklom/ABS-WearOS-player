@@ -70,7 +70,17 @@ data class MediaDto(
     val duration: Double? = null,
     /** Playback tracks: audio files plus startOffset/contentUrl, in play order. */
     val tracks: List<TrackDto> = emptyList(),
-    val audioFiles: List<AudioFileDto> = emptyList()
+    val audioFiles: List<AudioFileDto> = emptyList(),
+    /** Chapter marks in seconds from the start of the book. */
+    val chapters: List<ChapterDto> = emptyList()
+)
+
+@Serializable
+data class ChapterDto(
+    val id: Int? = null,
+    val start: Double = 0.0,
+    val end: Double = 0.0,
+    val title: String? = null
 )
 
 @Serializable

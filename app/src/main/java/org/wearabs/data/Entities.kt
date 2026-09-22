@@ -40,6 +40,21 @@ data class TrackEntity(
     val localPath: String? = null
 )
 
+/** One chapter mark of a book, in seconds from the start of the whole book. */
+@Entity(
+    tableName = "chapters",
+    primaryKeys = ["itemId", "chapterIndex"],
+    indices = [Index("itemId")]
+)
+data class ChapterEntity(
+    val itemId: String,
+    /** Position in the chapter list, 0-based and contiguous. */
+    val chapterIndex: Int,
+    val start: Double,
+    val end: Double,
+    val title: String
+)
+
 /** Listening position, kept locally first and pushed to the server by SyncWorker. */
 @Entity(tableName = "progress")
 data class ProgressEntity(
