@@ -318,9 +318,13 @@ Built with Wear Compose Material 3 in the current expressive style:
 edges of the round display, and `EdgeButton` for each screen's primary action,
 hugging the bottom rim.
 
-- **Library** is a plain vertical text list of title and author. Cover
-  thumbnails were tried and dropped: at watch size the artwork is too small to
-  tell books apart, and scanning text is faster.
+- **Library** is a plain vertical text list of title and author, then Search and
+  Sign out. Cover thumbnails were tried and dropped: at watch size the artwork is
+  too small to tell books apart, and scanning text is faster.
+- Anything destructive — signing out, deleting a download — goes through the
+  same confirmation dialog. Both screens put their actions in the list rather
+  than an EdgeButton, which would always pin the primary action to the bottom
+  rim and so force the wrong order.
 - **Book** shows the cover, the metadata, a progress bar once the book has been
   started, then Play and — below it, behind a confirmation dialog — Delete.
 - **Book** and **Player** put the cover behind the content. The backdrop is

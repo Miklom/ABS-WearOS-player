@@ -21,8 +21,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
-import androidx.wear.compose.material3.AlertDialog
-import androidx.wear.compose.material3.AlertDialogDefaults
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.CircularProgressIndicator
 import androidx.wear.compose.material3.FilledTonalButton
@@ -159,22 +157,15 @@ fun BookScreen(
         }
     }
 
-    AlertDialog(
+    ConfirmDialog(
         visible = confirmDelete,
-        onDismissRequest = { confirmDelete = false },
-        title = { Text("Delete download?") },
-        text = { Text("The book stays on the server.") },
-        confirmButton = {
-            AlertDialogDefaults.ConfirmButton(
-                onClick = {
-                    confirmDelete = false
-                    viewModel.delete()
-                }
-            )
+        title = "Delete download?",
+        detail = "The book stays on the server.",
+        onConfirm = {
+            confirmDelete = false
+            viewModel.delete()
         },
-        dismissButton = {
-            AlertDialogDefaults.DismissButton(onClick = { confirmDelete = false })
-        }
+        onDismiss = { confirmDelete = false }
     )
 }
 

@@ -12,6 +12,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -39,7 +42,9 @@ import androidx.wear.compose.material3.lazy.transformedHeight
 /**
  * The library as a plain vertical text list — faster to scan on a watch than a
  * wall of thumbnails, where the artwork is too small to tell books apart.
- * Search sits in an EdgeButton hugging the bottom rim.
+ *
+ * Search and Sign out are both list items rather than an EdgeButton, because an
+ * EdgeButton always sits at the bottom rim and Search belongs above Sign out.
  */
 @Composable
 fun HomeScreen(
@@ -50,15 +55,9 @@ fun HomeScreen(
 ) {
     val listState = rememberTransformingLazyColumnState()
     val spec = rememberTransformationSpec()
+    var confirmSignOut by remember { mutableStateOf(false) }
 
-    ScreenScaffold(
-        scrollState = listState,
-        edgeButton = {
-            EdgeButton(onClick = onSearch, buttonSize = EdgeButtonSize.Medium) {
-                Text("Search")
-            }
-        }
-    ) { contentPadding ->
+    ScreenScaffold(scrollState = listState) { contentPadding ->
         TransformingLazyColumn(
             state = listState,
             contentPadding = contentPadding,
@@ -91,9 +90,9 @@ fun HomeScreen(
             }
 
             item {
-                FilledTonalButton(
-                    onClick = onSignOut,
-                    label = { Text("Sign out") },
+                Button(
+                    onClick = onSearch,
+                    label = { Text("Search") },
                     transformation = SurfaceTransformation(spec),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -101,8 +100,27 @@ fun HomeScreen(
                         .transformedHeight(this, spec)
                 )
             }
+            item {
+                FilledTonalButton(
+                    onClick = { confirmSignOut = true },
+                    label = { Text("Sign out") },
+                    transformation = SurfaceTransformation(spec),
+                    modifier = Modifier.fillMaxWidth().transformedHeight(this, spec)
+                )
+            }
         }
     }
+
+    ConfirmDialog(
+        visible = confirmSignOut,
+        title = "Sign out?",
+        detail = "Downloads and positions are kept.",
+        onConfirm = {
+            confirmSignOut = false
+            onSignOut()
+        },
+        onDismiss = { confirmSignOut = false }
+    )
 }
 
 // ---- Search ----------------------------------------------------------------
