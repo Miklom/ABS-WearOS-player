@@ -1,7 +1,7 @@
 # ABS WearOS Player
 
 A deliberately minimal Audiobookshelf client for Wear OS, built for a Pixel Watch 4
-(Wear OS 6, API 36). It searches one Audiobookshelf library, downloads books to the
+(Wear OS 6-7, API 36). It searches one Audiobookshelf library, downloads books to the
 watch, plays them back offline, and syncs the listening position with the server.
 
 It does three things and nothing else: **search**, **download**, **play/pause**.
