@@ -89,6 +89,9 @@ dependencies {
     implementation(libs.wear.compose.navigation)
     implementation(libs.wear.input)
 
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
+
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.session)
     implementation(libs.media3.common)

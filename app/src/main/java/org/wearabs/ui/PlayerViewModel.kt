@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,8 +15,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.wearabs.WearAbsApp
 import org.wearabs.data.TrackEntity
+import org.wearabs.net.Covers
 import org.wearabs.player.PlayerService
 import org.wearabs.player.bookDuration
 import org.wearabs.player.buildPlaylist
@@ -29,6 +32,8 @@ data class PlayerUiState(
     val position: Double = 0.0,
     val duration: Double = 0.0,
     val playing: Boolean = false,
+    /** File or URL for Coil; null when the book has no cover. */
+    val cover: Any? = null,
     val ready: Boolean = false,
     val error: String? = null
 )
@@ -82,7 +87,8 @@ class PlayerViewModel(application: Application, private val itemId: String) :
         _state.value = _state.value.copy(
             title = book.title,
             author = book.author,
-            duration = duration
+            duration = duration,
+            cover = withContext(Dispatchers.IO) { repository.coverModel(itemId, Covers.LARGE) }
         )
 
         // Resume where we left off; the server wins if it has something newer.

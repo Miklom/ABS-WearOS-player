@@ -107,6 +107,11 @@ class DownloadWorker(
                 completedBytes += bytes
             }
 
+            // Cover last, and never fatal: a missing cover only costs a nicer tile.
+            runCatching {
+                repository.api.downloadCover(itemId, repository.coverFile(itemId), network)
+            }.onFailure { Log.w(TAG, "Cover download failed for $itemId", it) }
+
             val complete = repository.reconcileDownloadState(itemId)
             setProgress(workDataOf(KEY_PROGRESS to 100, KEY_SLOW to slow))
             notifications?.cancel(notificationId)

@@ -129,9 +129,9 @@ private fun WearAbsNavHost(launchTextInput: TextInputLauncher) {
 
         composable(Routes.HOME) {
             val model: HomeViewModel = viewModel()
-            val books by model.books.collectAsStateWithLifecycle()
+            val tiles by model.tiles.collectAsStateWithLifecycle()
             HomeScreen(
-                books = books,
+                tiles = tiles,
                 onSearch = { navController.navigate(Routes.SEARCH) },
                 onBook = { navController.navigate(Routes.book(it)) },
                 onSignOut = model::signOut

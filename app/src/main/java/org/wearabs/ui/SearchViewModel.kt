@@ -8,12 +8,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.wearabs.WearAbsApp
 import org.wearabs.data.BookEntity
+import org.wearabs.net.Covers
 import org.wearabs.net.SessionExpiredException
+
+/** A search hit plus the cover model Coil should load for it. */
+data class SearchHit(val book: BookEntity, val cover: Any?)
 
 data class SearchUiState(
     val query: String = "",
     val loading: Boolean = false,
-    val results: List<BookEntity> = emptyList(),
+    val results: List<SearchHit> = emptyList(),
     val error: String? = null,
     val searched: Boolean = false
 )
@@ -31,7 +35,9 @@ class SearchViewModel : ViewModel() {
         _state.value = SearchUiState(query = trimmed, loading = true)
         viewModelScope.launch {
             try {
-                val results = repository.search(trimmed)
+                val results = repository.search(trimmed).map { book ->
+                    SearchHit(book, repository.coverModel(book.itemId, Covers.THUMB))
+                }
                 _state.value = SearchUiState(
                     query = trimmed,
                     results = results,

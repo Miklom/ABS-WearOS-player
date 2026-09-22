@@ -7,6 +7,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import kotlinx.coroutines.flow.Flow
 import org.wearabs.net.AbsApi
+import org.wearabs.net.Covers
 import org.wearabs.net.LibraryItemDto
 import org.wearabs.net.ProgressUpdateDto
 
@@ -82,6 +83,20 @@ class Repository(
         File(bookDir(track.itemId), "%03d-%s".format(track.trackIndex, track.fileName))
 
     fun partFile(track: TrackEntity): File = File(trackFile(track).path + ".part")
+
+    /** Cover saved beside the audio files when the book was downloaded. */
+    fun coverFile(itemId: String): File = File(bookDir(itemId), "cover.jpg")
+
+    /**
+     * What Coil should load for a book: the downloaded file when there is one,
+     * otherwise the server URL. Null when neither is available.
+     */
+    fun coverModel(itemId: String, width: Int): Any? {
+        val local = coverFile(itemId)
+        if (local.exists() && local.length() > 0) return local
+        val serverUrl = authStore.current?.serverUrl ?: return null
+        return Covers.url(serverUrl, itemId, width)
+    }
 
     /**
      * Re-derives the book's `downloaded` flag from what is actually on disk, so

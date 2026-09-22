@@ -5,6 +5,7 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import android.util.Log
+import androidx.core.content.edit
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -44,13 +45,13 @@ class AuthStore(context: Context) {
     val current: Session? get() = _session.value
 
     fun save(session: Session) {
-        prefs.edit()
-            .putString(KEY_SERVER_URL, session.serverUrl)
-            .putString(KEY_USERNAME, session.username)
-            .putString(KEY_ACCESS, encrypt(session.accessToken))
-            .putString(KEY_REFRESH, encrypt(session.refreshToken))
-            .putString(KEY_LIBRARY, session.defaultLibraryId)
-            .apply()
+        prefs.edit {
+            putString(KEY_SERVER_URL, session.serverUrl)
+            putString(KEY_USERNAME, session.username)
+            putString(KEY_ACCESS, encrypt(session.accessToken))
+            putString(KEY_REFRESH, encrypt(session.refreshToken))
+            putString(KEY_LIBRARY, session.defaultLibraryId)
+        }
         _session.value = session
     }
 
@@ -66,7 +67,7 @@ class AuthStore(context: Context) {
     }
 
     fun clear() {
-        prefs.edit().clear().apply()
+        prefs.edit { clear() }
         _session.value = null
     }
 

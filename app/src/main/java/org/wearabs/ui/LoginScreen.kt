@@ -2,6 +2,7 @@ package org.wearabs.ui
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -9,14 +10,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
-import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
-import androidx.wear.compose.material3.Button
+import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
+import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
+import androidx.wear.compose.material3.EdgeButton
+import androidx.wear.compose.material3.EdgeButtonSize
 import androidx.wear.compose.material3.FilledTonalButton
 import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffold
+import androidx.wear.compose.material3.SurfaceTransformation
 import androidx.wear.compose.material3.Text
+import androidx.wear.compose.material3.lazy.rememberTransformationSpec
+import androidx.wear.compose.material3.lazy.transformedHeight
 
 /**
  * Server address, username and password. Each field opens Wear's system text
@@ -28,66 +33,81 @@ fun LoginScreen(
     onEditField: (label: String, initial: String, onResult: (String) -> Unit) -> Unit
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val listState = rememberScalingLazyListState()
+    val listState = rememberTransformingLazyColumnState()
+    val spec = rememberTransformationSpec()
 
-    ScreenScaffold(scrollState = listState) { contentPadding ->
-        ScalingLazyColumn(
+    ScreenScaffold(
+        scrollState = listState,
+        edgeButton = {
+            if (!state.busy) {
+                EdgeButton(
+                    onClick = viewModel::submit,
+                    enabled = state.canSubmit,
+                    buttonSize = EdgeButtonSize.Medium
+                ) { Text("Sign in") }
+            }
+        }
+    ) { contentPadding ->
+        TransformingLazyColumn(
             state = listState,
             contentPadding = contentPadding,
             modifier = Modifier.fillMaxSize()
         ) {
-            item { ListHeader { Text("Sign in") } }
+            item {
+                ListHeader(
+                    modifier = Modifier.transformedHeight(this, spec),
+                    transformation = SurfaceTransformation(spec)
+                ) { Text("Sign in") }
+            }
 
             item {
                 Field(
                     label = "Server",
                     value = state.serverUrl,
                     placeholder = "abs.example.com",
-                    onClick = {
-                        onEditField("Server address", state.serverUrl, viewModel::setServerUrl)
-                    }
-                )
+                    transformation = SurfaceTransformation(spec),
+                    modifier = Modifier.transformedHeight(this, spec)
+                ) { onEditField("Server address", state.serverUrl, viewModel::setServerUrl) }
             }
             item {
                 Field(
                     label = "User",
                     value = state.username,
                     placeholder = "username",
-                    onClick = { onEditField("Username", state.username, viewModel::setUsername) }
-                )
+                    transformation = SurfaceTransformation(spec),
+                    modifier = Modifier.transformedHeight(this, spec)
+                ) { onEditField("Username", state.username, viewModel::setUsername) }
             }
             item {
                 Field(
                     label = "Password",
                     // Never render the password back onto the watch face.
-                    value = if (state.password.isEmpty()) "" else "•".repeat(state.password.length.coerceAtMost(12)),
+                    value = "•".repeat(state.password.length.coerceAtMost(12)),
                     placeholder = "password",
-                    onClick = { onEditField("Password", "", viewModel::setPassword) }
-                )
+                    transformation = SurfaceTransformation(spec),
+                    modifier = Modifier.transformedHeight(this, spec)
+                ) { onEditField("Password", "", viewModel::setPassword) }
             }
 
             state.error?.let { error ->
                 item { CenteredMessage(error) }
             }
-
-            item {
-                if (state.busy) {
-                    CenteredSpinner()
-                } else {
-                    Button(
-                        onClick = viewModel::submit,
-                        enabled = state.canSubmit,
-                        label = { Text("Sign in") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
+            if (state.busy) {
+                item { CenteredSpinner() }
             }
         }
     }
 }
 
 @Composable
-private fun Field(label: String, value: String, placeholder: String, onClick: () -> Unit) {
+private fun Field(
+    label: String,
+    value: String,
+    placeholder: String,
+    transformation: SurfaceTransformation,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
     FilledTonalButton(
         onClick = onClick,
         label = { Text(label, maxLines = 1) },
@@ -98,7 +118,8 @@ private fun Field(label: String, value: String, placeholder: String, onClick: ()
                 overflow = TextOverflow.Ellipsis
             )
         },
-        modifier = Modifier.fillMaxWidth()
+        transformation = transformation,
+        modifier = modifier.fillMaxWidth()
     )
 }
 
@@ -111,7 +132,7 @@ fun SplashScreen() {
                 text = "ABS Player",
                 style = MaterialTheme.typography.titleMedium,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
             )
             CenteredSpinner()
         }

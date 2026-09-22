@@ -117,6 +117,22 @@ local library first, since item ids mean nothing across accounts.
 
 Wear has no masked text input, so the password is visible while it is typed.
 
+### Cover art
+
+`GET /api/items/{id}/cover?width=N&format=jpeg` — the server resizes, which
+matters on a watch that may be routing through the Bluetooth proxy. Covers are
+requested at 192px for library tiles, 96px for search rows and 384px for the
+detail screens, never at full size.
+
+Loading goes through Coil with an OkHttp interceptor that adds the same bearer
+token as the rest of `/api`, reading it per request so a token refresh is picked
+up without rebuilding the loader. Each download also saves `cover.jpg` next to
+the book's audio files, so the library grid keeps working offline; a failed
+cover download is never fatal.
+
+Books without cover art get a tinted tile with the title's initials, coloured
+from a hash of the title so it stays the same between launches.
+
 ### Search
 
 `GET /api/libraries/{libraryId}/search?q={query}&limit=10`. Text entry uses Wear's
@@ -162,7 +178,8 @@ its metadata extras, which is how the player converts between the global book
 position and a (track index, offset) pair in both directions.
 
 The Player screen shows the title, `position / total`, and one large play/pause
-button. That is all of it.
+button, over the cover art, with the listening position as an arc around the
+rim. That is all of it.
 
 ### Offline progress and sync
 
@@ -286,9 +303,38 @@ and only returns a refresh token when `x-return-tokens: true` is sent
 to 30 days, both overridable server-side via `ACCESS_TOKEN_EXPIRY` and
 `REFRESH_TOKEN_EXPIRY` (`TokenManager`).
 
+## Interface
+
+Built with Wear Compose Material 3 in the current expressive style:
+`TransformingLazyColumn` for the scrolling lists, so items scale and morph at the
+edges of the round display, and `EdgeButton` for each screen's primary action,
+hugging the bottom rim.
+
+- **Library** is a grid of cover art, two tiles per row — what fits on a round
+  watch without the artwork becoming unreadable. Covers are the tap target
+  themselves, with the title only as the accessibility label.
+- **Book** and **Player** put the cover behind the content. The backdrop is
+  deliberately decoded at ~96px and scaled up: bilinear filtering turns that into
+  a soft wash for free, which is far kinder to a watch GPU than a real blur pass
+  running behind a scrolling list. A radial scrim keeps text readable over any
+  artwork.
+- **Search** rows carry a small cover thumbnail beside title and author.
+
 ## Notes on dependency versions
 
 The toolchain is pinned to AGP 8.13.x / Kotlin 2.2.21 rather than the newest
 releases, because KSP — needed for Room — does not yet publish a build for Kotlin
 2.4.x. Android lint reports the newer versions as available; that is expected.
-`compileSdk`/`targetSdk` are 36, which is the API level Wear OS 6 is built on.
+`compileSdk`/`targetSdk` are 36, the API level Wear OS 6 is built on.
+
+Two dependencies are held back deliberately, and both were checked rather than
+assumed:
+
+- **Wear Compose 1.5.6**, not 1.6.2. 1.6.2 pulls in Compose 1.12, which requires
+  AGP 9.1+, and AGP 9 drops the separate Kotlin plugin — a toolchain migration
+  with no payoff here, because 1.5.6 already ships every expressive component
+  this app uses (`TransformingLazyColumn`, `EdgeButton`, `SurfaceTransformation`,
+  `ResponsiveTransformationSpec`), verified by inspecting the 1.5.6 artifact.
+- **Coil 3.3.0**, not 3.6.x. 3.6.x requires `compileSdk 37`, and 3.5.0 depends on
+  kotlin-stdlib 2.4.0, whose metadata the Kotlin 2.2 compiler cannot read. 3.3.0
+  is the newest release that depends on stdlib 2.2.x.

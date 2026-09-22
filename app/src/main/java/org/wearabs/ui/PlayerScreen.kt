@@ -1,8 +1,10 @@
 package org.wearabs.ui
 
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -15,50 +17,70 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.wear.compose.material3.CircularProgressIndicator
+import androidx.wear.compose.material3.FilledIconButton
 import androidx.wear.compose.material3.Icon
-import androidx.wear.compose.material3.IconButton
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.Text
 
-/** Title, position / total, and one big play-pause button. Nothing else. */
+/**
+ * Title, position / total, and one big play-pause button over the cover art.
+ * The listening position also runs as an arc around the rim, which is the
+ * idiomatic way to show progress on a round watch.
+ */
 @Composable
 fun PlayerScreen(viewModel: PlayerViewModel) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val fraction = if (state.duration > 0) {
+        (state.position / state.duration).toFloat().coerceIn(0f, 1f)
+    } else {
+        0f
+    }
 
-    ScreenScaffold {
-        CenteredColumn {
-            Text(
-                text = state.title,
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth()
+    CoverBackdrop(model = state.cover) {
+        ScreenScaffold {
+            CircularProgressIndicator(
+                progress = { fraction },
+                startAngle = 292.5f,
+                endAngle = 247.5f,
+                strokeWidth = 4.dp,
+                modifier = Modifier.fillMaxSize().padding(3.dp)
             )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = "${formatDuration(state.position)} / ${formatDuration(state.duration)}",
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(12.dp))
 
-            val error = state.error
-            if (error != null) {
-                CenteredMessage(error)
-            } else {
-                IconButton(
-                    onClick = viewModel::togglePlayPause,
-                    enabled = state.ready,
-                    modifier = Modifier.size(72.dp)
-                ) {
-                    Icon(
-                        imageVector = if (state.playing) PauseIcon else PlayIcon,
-                        contentDescription = if (state.playing) "Pause" else "Play",
-                        modifier = Modifier.size(36.dp)
-                    )
+            CenteredColumn {
+                Text(
+                    text = state.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = "${formatDuration(state.position)} / ${formatDuration(state.duration)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(12.dp))
+
+                val error = state.error
+                if (error != null) {
+                    CenteredMessage(error)
+                } else {
+                    FilledIconButton(
+                        onClick = viewModel::togglePlayPause,
+                        enabled = state.ready,
+                        modifier = Modifier.size(72.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (state.playing) PauseIcon else PlayIcon,
+                            contentDescription = if (state.playing) "Pause" else "Play",
+                            modifier = Modifier.size(36.dp)
+                        )
+                    }
                 }
             }
         }

@@ -252,15 +252,7 @@ class AbsApi(private val authStore: AuthStore) {
         network: Network?,
         onProgress: (Long, Long) -> Unit
     ): Long = withContext(Dispatchers.IO) {
-        val downloadClient = network?.let {
-            client.newBuilder()
-                .socketFactory(it.socketFactory)
-                .dns(object : Dns {
-                    override fun lookup(hostname: String): List<InetAddress> =
-                        it.getAllByName(hostname).toList()
-                })
-                .build()
-        } ?: client
+        val downloadClient = network?.let { pinnedClient(it) } ?: client
 
         val path = "/api/items/$itemId/file/$ino/download"
         destination.parentFile?.mkdirs()
@@ -355,6 +347,44 @@ class AbsApi(private val authStore: AuthStore) {
         @Suppress("UNREACHABLE_CODE")
         0L
     }
+
+    /**
+     * Saves the item's cover next to its audio files so the library grid keeps
+     * working offline. Returns false when the item simply has no cover (404).
+     */
+    suspend fun downloadCover(
+        itemId: String,
+        destination: File,
+        network: Network?,
+        width: Int = Covers.LARGE
+    ): Boolean = withContext(Dispatchers.IO) {
+        val downloadClient = network?.let { pinnedClient(it) } ?: client
+        val path = "/api/items/$itemId/cover?width=$width&format=jpeg"
+        send(downloadClient, path) { get() }.use { response ->
+            if (response.code == 404) return@withContext false
+            if (!response.isSuccessful) {
+                throw AbsHttpException(response.code, response.body?.string().orEmpty())
+            }
+            val body = response.body ?: return@withContext false
+            destination.parentFile?.mkdirs()
+            val part = File(destination.path + ".part")
+            body.byteStream().use { input ->
+                FileOutputStream(part).use { output -> input.copyTo(output) }
+            }
+            if (destination.exists()) destination.delete()
+            return@withContext part.renameTo(destination)
+        }
+    }
+
+    /** OkHttp bound to one network, so a Wi-Fi request is not served over Bluetooth. */
+    private fun pinnedClient(network: Network): OkHttpClient =
+        client.newBuilder()
+            .socketFactory(network.socketFactory)
+            .dns(object : Dns {
+                override fun lookup(hostname: String): List<InetAddress> =
+                    network.getAllByName(hostname).toList()
+            })
+            .build()
 
     private sealed interface Outcome {
         data class Done(val bytes: Long) : Outcome
