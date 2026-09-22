@@ -61,13 +61,21 @@ class PlayerViewModel(application: Application, private val itemId: String) :
     private var chapters: List<ChapterEntity> = emptyList()
     private var ticker: Job? = null
 
+    /**
+     * Whether the player screen is actually on screen. During a multi-hour
+     * listen the wrist is down and the display is off almost all of the time;
+     * without this the ticker would keep waking up to update a UI nobody is
+     * looking at.
+     */
+    private var uiVisible = false
+
     private val _state = MutableStateFlow(PlayerUiState())
     val state: StateFlow<PlayerUiState> = _state.asStateFlow()
 
     private val listener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             _state.value = _state.value.copy(playing = isPlaying)
-            if (isPlaying) startTicker() else stopTicker()
+            updateTicker()
             refreshPosition()
         }
 
@@ -130,7 +138,15 @@ class PlayerViewModel(application: Application, private val itemId: String) :
 
         _state.value = _state.value.copy(ready = true, playing = mediaController.isPlaying)
         refreshPosition()
-        if (mediaController.isPlaying) startTicker()
+        updateTicker()
+    }
+
+    /** Called by the screen as it enters and leaves the resumed state. */
+    fun setUiVisible(visible: Boolean) {
+        if (uiVisible == visible) return
+        uiVisible = visible
+        if (visible) refreshPosition()
+        updateTicker()
     }
 
     // ---- Controls ----------------------------------------------------------
@@ -168,19 +184,23 @@ class PlayerViewModel(application: Application, private val itemId: String) :
 
     // ---- Position ----------------------------------------------------------
 
-    private fun startTicker() {
-        if (ticker?.isActive == true) return
-        ticker = viewModelScope.launch {
-            while (true) {
-                refreshPosition()
-                delay(500)
+    /** The ticker is only worth running while something is playing and visible. */
+    private fun updateTicker() {
+        val shouldRun = uiVisible && _state.value.playing
+        if (shouldRun) {
+            if (ticker?.isActive == true) return
+            ticker = viewModelScope.launch {
+                while (true) {
+                    refreshPosition()
+                    // The readout is in whole seconds, so twice a second was
+                    // twice the wake-ups for no visible difference.
+                    delay(POSITION_REFRESH_MS)
+                }
             }
+        } else {
+            ticker?.cancel()
+            ticker = null
         }
-    }
-
-    private fun stopTicker() {
-        ticker?.cancel()
-        ticker = null
     }
 
     private fun refreshPosition() {
@@ -205,10 +225,15 @@ class PlayerViewModel(application: Application, private val itemId: String) :
     }
 
     override fun onCleared() {
-        stopTicker()
+        ticker?.cancel()
+        ticker = null
         controller?.removeListener(listener)
         controller?.release()
         controller = null
         super.onCleared()
+    }
+
+    private companion object {
+        const val POSITION_REFRESH_MS = 1_000L
     }
 }

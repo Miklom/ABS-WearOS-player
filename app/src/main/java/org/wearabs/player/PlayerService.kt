@@ -50,6 +50,10 @@ class PlayerService : MediaSessionService() {
                     .build(),
                 /* handleAudioFocus = */ true
             )
+            // Everything is played from local files, so a partial wake lock is
+            // all that is needed — but it is needed: a dozing watch will
+            // otherwise stall playback once the screen has been off a while.
+            .setWakeMode(C.WAKE_MODE_LOCAL)
             .build()
             .apply { addListener(PlaybackListener()) }
 

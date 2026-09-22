@@ -2,10 +2,12 @@ package org.wearabs.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.wearabs.WearAbsApp
 import org.wearabs.data.BookEntity
 import org.wearabs.net.Covers
@@ -35,8 +37,10 @@ class SearchViewModel : ViewModel() {
         _state.value = SearchUiState(query = trimmed, loading = true)
         viewModelScope.launch {
             try {
-                val results = repository.search(trimmed).map { book ->
-                    SearchHit(book, repository.coverModel(book.itemId, Covers.THUMB))
+                val hits = repository.search(trimmed)
+                // coverModel() stats the filesystem per hit; not on the main thread.
+                val results = withContext(Dispatchers.IO) {
+                    hits.map { book -> SearchHit(book, repository.coverModel(book.itemId, Covers.THUMB)) }
                 }
                 _state.value = SearchUiState(
                     query = trimmed,

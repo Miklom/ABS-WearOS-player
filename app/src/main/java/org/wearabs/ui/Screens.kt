@@ -111,7 +111,7 @@ fun HomeScreen(
 fun SearchScreen(
     viewModel: SearchViewModel,
     onLaunchInput: () -> Unit,
-    onBook: (org.wearabs.data.BookEntity) -> Unit
+    onBook: (BookEntity) -> Unit
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val listState = rememberTransformingLazyColumnState()
@@ -145,7 +145,13 @@ fun SearchScreen(
                 ) { index ->
                     val hit = state.results[index]
                     Button(
-                        onClick = { onBook(hit.book) },
+                        onClick = {
+                            // Cache it first, so the Book screen has title,
+                            // author and duration even before the item fetch
+                            // returns — and at all when offline.
+                            viewModel.remember(hit.book)
+                            onBook(hit.book)
+                        },
                         label = { Text(hit.book.title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
                         secondaryLabel = if (hit.book.author.isNotBlank()) {
                             { Text(hit.book.author, maxLines = 1, overflow = TextOverflow.Ellipsis) }

@@ -43,7 +43,10 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // The watch is storage- and RAM-constrained, and the dex is almost
+            // all of the APK, so shrinking earns its keep here.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }

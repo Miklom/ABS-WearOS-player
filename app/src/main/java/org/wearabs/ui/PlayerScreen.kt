@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.wear.compose.material3.CircularProgressIndicator
 import androidx.wear.compose.material3.FilledIconButton
@@ -38,6 +39,13 @@ import androidx.wear.compose.material3.Text
 @Composable
 fun PlayerScreen(viewModel: PlayerViewModel) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+
+    // Playback keeps going in the service with the screen off; the position
+    // readout does not need to.
+    LifecycleResumeEffect(viewModel) {
+        viewModel.setUiVisible(true)
+        onPauseOrDispose { viewModel.setUiVisible(false) }
+    }
     val fraction = if (state.duration > 0) {
         (state.position / state.duration).toFloat().coerceIn(0f, 1f)
     } else {

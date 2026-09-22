@@ -8,13 +8,6 @@ import kotlinx.coroutines.flow.stateIn
 import org.wearabs.WearAbsApp
 import org.wearabs.data.BookEntity
 
-/** One tile in the library grid. */
-data class LibraryTile(
-    val itemId: String,
-    val title: String,
-    /** A File or a URL for Coil; null when the book has no cover at all. */
-    val cover: Any?
-)
 
 class HomeViewModel : ViewModel() {
 

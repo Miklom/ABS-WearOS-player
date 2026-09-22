@@ -330,6 +330,24 @@ hugging the bottom rim.
   artwork.
 - **Search** rows carry a small cover thumbnail beside title and author.
 
+## Release builds are shrunk
+
+The release build runs R8 with resource shrinking, which takes the APK from
+about 29 MB to under 5 MB — almost all of it dex. That matters on a watch, both
+for storage and for how long `adb install` takes over Wi-Fi.
+
+Names are deliberately *not* obfuscated (`-dontobfuscate`). Renaming saves
+roughly another half megabyte, which is not worth losing readable stack traces
+on a sideloaded app, and keeping names rules out a whole class of
+reflection-by-name breaking silently.
+
+`app/proguard-rules.pro` keeps the entry points nothing calls directly: the
+WorkManager workers (constructed by name from the persisted work spec), the
+generated `AppDatabase_Impl` (looked up by name by Room), the media session
+service (resolved through its manifest intent filter), and the serializers for
+the wire types. Debug builds are unshrunk, so they are the fallback if a release
+build ever misbehaves.
+
 ## Notes on dependency versions
 
 The toolchain is pinned to AGP 8.13.x / Kotlin 2.2.21 rather than the newest

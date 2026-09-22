@@ -38,14 +38,18 @@ fun BookCover(
     shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(18.dp)
 ) {
     var failed by remember(model) { mutableStateOf(model == null) }
+    // Both derive purely from the title, so recomputing them per frame would be
+    // pure waste in a scrolling list.
+    val brush = remember(title) { placeholderBrush(title) }
+    val label = remember(title) { initials(title) }
 
     Box(
-        modifier = modifier.clip(shape).background(placeholderBrush(title)),
+        modifier = modifier.clip(shape).background(brush),
         contentAlignment = Alignment.Center
     ) {
         if (failed) {
             Text(
-                text = initials(title),
+                text = label,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center,

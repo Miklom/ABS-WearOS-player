@@ -87,7 +87,14 @@ class AuthStore(context: Context) {
 
     // ---- Keystore-backed AES/GCM -------------------------------------------
 
-    private fun secretKey(): SecretKey {
+    /**
+     * Opening the Android Keystore is slow enough to show up in cold start, and
+     * this used to happen once per encrypt and once per decrypt — four times
+     * before the first frame. The handle is cheap to keep, so keep it.
+     */
+    private val cachedKey: SecretKey by lazy { loadOrCreateKey() }
+
+    private fun loadOrCreateKey(): SecretKey {
         val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
         (keyStore.getEntry(KEY_ALIAS, null) as? KeyStore.SecretKeyEntry)?.let { return it.secretKey }
 
@@ -106,7 +113,7 @@ class AuthStore(context: Context) {
 
     private fun encrypt(value: String): String? = try {
         val cipher = Cipher.getInstance(TRANSFORMATION)
-        cipher.init(Cipher.ENCRYPT_MODE, secretKey())
+        cipher.init(Cipher.ENCRYPT_MODE, cachedKey)
         val encrypted = cipher.doFinal(value.toByteArray(Charsets.UTF_8))
         Base64.encodeToString(cipher.iv + encrypted, Base64.NO_WRAP)
     } catch (e: Exception) {
@@ -119,7 +126,7 @@ class AuthStore(context: Context) {
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(
             Cipher.DECRYPT_MODE,
-            secretKey(),
+            cachedKey,
             GCMParameterSpec(TAG_LENGTH_BITS, combined, 0, IV_LENGTH)
         )
         String(cipher.doFinal(combined, IV_LENGTH, combined.size - IV_LENGTH), Charsets.UTF_8)
