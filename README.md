@@ -32,9 +32,16 @@ Server address, username and password are entered on the watch at first launch.
 ## Build
 
 ```bash
-./gradlew assembleDebug            # app/build/outputs/apk/debug/app-debug.apk
+./gradlew assembleRelease          # app/build/outputs/apk/release/app-release.apk
 ./gradlew testDebugUnitTest        # offset math and API payload parsing
+./gradlew assembleDebug            # for development only — see below
 ```
+
+**Install the release build, not the debug one.** A debug build runs Compose
+without R8 and without the ahead-of-time profile, and on a watch that shows up
+as visible scrolling jank. It is roughly six times the size, too. The release
+build signs with the debug key when no keystore is configured, so it installs
+just the same.
 
 Or open the project in Android Studio and run the `app` configuration.
 
@@ -76,13 +83,13 @@ Accept the "Allow debugging?" prompt on the watch. Confirm with `adb devices`.
 **4. Install**
 
 ```bash
-adb -s <watch-ip>:5555 install -r app/build/outputs/apk/debug/app-debug.apk
+adb -s <watch-ip>:5555 install -r app/build/outputs/apk/release/app-release.apk
 ```
 
 Or straight from Gradle, once exactly one device is connected:
 
 ```bash
-./gradlew installDebug
+./gradlew installRelease
 ```
 
 To disconnect afterwards: `adb disconnect <watch-ip>:5555`.
@@ -333,6 +340,27 @@ hugging the bottom rim.
   running behind a scrolling list. A radial scrim keeps text readable over any
   artwork.
 - **Search** rows carry a small cover thumbnail beside title and author.
+
+## Performance notes
+
+Two things the watch is sensitive to, both of which only apply to release builds:
+
+- **Ahead-of-time compilation.** `app/src/main/baseline-prof.txt` marks this
+  app's own code as hot/startup so ART compiles it at install time. Without it
+  the profile that shipped in the APK came entirely from the libraries and had
+  no reference to `org.wearabs` at all, which meant every screen was interpreted
+  and JIT-compiled the first time it was opened — first-render and first-scroll
+  jank, exactly where it is most noticeable. The rules expand to roughly 900
+  entries after shrinking, including the `TransformingLazyColumn` measurement
+  path that runs on every frame of a fling.
+- **Overdraw.** `CoverBackdrop` sits underneath a scrolling list, so every
+  full-screen layer there is paid on every frame. It draws two, and only one
+  when the book has no cover; the dimming is folded into the scrim rather than
+  being a separate alpha pass on the image. Cover loading has no crossfade for
+  the same reason — a fade invalidates every frame while it runs.
+
+The Compose compiler's stability report was used to check the screens rather
+than guessing: all of them are skippable, so recomposition was not the problem.
 
 ## Release builds are shrunk
 

@@ -1,0 +1,14 @@
+# Baseline profile for this app's own code.
+#
+# The profile that ships in the APK comes entirely from the libraries; before
+# this file it contained zero references to org.wearabs, so every screen was
+# interpreted and JIT-compiled the first time it was opened. That shows up
+# exactly as first-render and first-scroll jank.
+#
+# Generating a measured profile needs a device run, which this project has no
+# harness for. The app's own code is a small part of the APK, so compiling all
+# of it ahead of time is a reasonable substitute: H = hot, S = startup,
+# P = post-startup.
+
+HSPLorg/wearabs/**->**(**)**
+Lorg/wearabs/**;

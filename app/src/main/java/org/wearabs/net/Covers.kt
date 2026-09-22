@@ -5,7 +5,6 @@ import coil3.ImageLoader
 import coil3.disk.DiskCache
 import coil3.memory.MemoryCache
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
-import coil3.request.crossfade
 import okio.Path.Companion.toOkioPath
 import okhttp3.OkHttpClient
 import org.wearabs.data.AuthStore
@@ -61,7 +60,9 @@ object Covers {
                     .maxSizeBytes(24L * 1024 * 1024)
                     .build()
             }
-            .crossfade(true)
+            // No crossfade: the fade invalidates every frame while it runs, and
+            // in a scrolling list that lands on the frames that can least
+            // afford it. Covers come from memory or local disk anyway.
             .build()
     }
 }

@@ -46,8 +46,12 @@ fun PlayerScreen(viewModel: PlayerViewModel) {
         viewModel.setUiVisible(true)
         onPauseOrDispose { viewModel.setUiVisible(false) }
     }
+    // Quantised to roughly one degree of the arc. A second of a multi-hour book
+    // moves it far less than a pixel, and every change animates a full-screen
+    // indicator; this drops almost all of those animations.
     val fraction = if (state.duration > 0) {
-        (state.position / state.duration).toFloat().coerceIn(0f, 1f)
+        val exact = (state.position / state.duration).coerceIn(0.0, 1.0)
+        (Math.round(exact * ARC_STEPS).toFloat() / ARC_STEPS)
     } else {
         0f
     }
@@ -159,6 +163,9 @@ fun PlayerScreen(viewModel: PlayerViewModel) {
 }
 
 private const val SKIP_SECONDS = 10.0
+
+/** One step per degree of the progress arc. */
+private const val ARC_STEPS = 360
 
 /**
  * The Material icon set is a large dependency for a handful of glyphs, so the
