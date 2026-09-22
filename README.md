@@ -8,9 +8,6 @@ It does three things and nothing else: **search**, **download**, **play/pause**.
 There is no skip, no speed control, no chapter list and no sleep timer, and there
 is no companion phone app — the watch talks to Audiobookshelf directly.
 
-**Bluetooth headphones must be paired to the watch.** The Pixel Watch 4 has no
-speaker usable for media playback, so with nothing paired you will see the player
-running but hear nothing.
 
 ---
 
