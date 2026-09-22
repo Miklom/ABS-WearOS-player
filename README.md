@@ -39,9 +39,7 @@ Server address, username and password are entered on the watch at first launch.
 Or open the project in Android Studio and run the `app` configuration.
 
 ## Install on the Pixel Watch 4
-
-The watch has no USB port, so everything goes over Wi-Fi. Put the watch and your
-computer on the **same Wi-Fi network** — and make sure the watch is actually
+Put the watch and your computer on the **same Wi-Fi network** — and make sure the watch is actually
 joined to Wi-Fi, not just riding the Bluetooth link to your phone
 (*Settings → Connectivity → Wi-Fi*).
 
