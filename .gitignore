@@ -1,0 +1,19 @@
+# Local configuration — contains the ABS server URL and API token. Never commit.
+local.properties
+
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+/app/build/
+/app/release/
+*.apk
+*.aab
+*.keystore
+*.jks

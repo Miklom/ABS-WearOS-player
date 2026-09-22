@@ -1,0 +1,7 @@
+# Copy this file to local.properties and point it at your Android SDK.
+# local.properties is gitignored.
+#
+# There is nothing else to configure here: the server address, username and
+# password are entered on the watch at first launch, not baked into the build.
+
+sdk.dir=/path/to/Android/sdk

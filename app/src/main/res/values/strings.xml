@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ABS Player</string>
+    <string name="search_hint">Search books</string>
+</resources>
